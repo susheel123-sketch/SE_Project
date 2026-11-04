@@ -8,8 +8,8 @@ Revive is a web marketplace that connects owners of broken or unwanted electroni
 |---|---|
 | Trello board (backlog, Sprint 1, Definition of Done) | https://trello.com/b/jFQGdQdh/revive-software-engineering |
 | Repository | https://github.com/susheel123-sketch/SE_Project |
-| Live web app | _add after deploying_ |
-| Live backend health check | _add after deploying_ (`…/api/health`) |
+| Live web app | https://se-project-indol.vercel.app |
+| Live backend health check | https://revive-api-p12o.onrender.com/api/health |
 
 ## Tech stack
 
