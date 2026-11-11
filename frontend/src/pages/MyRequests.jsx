@@ -50,8 +50,7 @@ export default function MyRequests() {
                 <StatusBadge status={r.status} />
               </div>
               <p className="muted small">
-                {r.request_type === 'repair' ? 'Repair' : 'Trade-in'} · {r.device_type} · created {new Date(r.created_at).toLocaleDateString()}
-              </p>
+                  {r.request_type === 'repair' ? 'Repair' : 'Trade-in'} · {r.device_type} · {r.photo_ids.length} photo{r.photo_ids.length === 1 ? '' : 's'} · created {new Date(r.created_at).toLocaleDateString()}              </p>
               <p className="desc">{r.description}</p>
               {EDITABLE.includes(r.status) && (
                 <div className="actions">
