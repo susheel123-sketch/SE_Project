@@ -43,6 +43,9 @@ export default function MyRequests() {
           <article key={r.request_id} className="card request-card">
             <div className="thumbs">
               {r.photo_ids.slice(0, 3).map((id) => <AuthImage key={id} photoId={id} alt={`Photo of ${r.brand_model}`} />)}
+              {r.photo_ids.length > 3 && (
+                <div className="thumb-more">+{r.photo_ids.length - 3}</div>
+              )}
             </div>
             <div className="request-body">
               <div className="row-between">
@@ -50,7 +53,8 @@ export default function MyRequests() {
                 <StatusBadge status={r.status} />
               </div>
               <p className="muted small">
-                  {r.request_type === 'repair' ? 'Repair' : 'Trade-in'} · {r.device_type} · {r.photo_ids.length} photo{r.photo_ids.length === 1 ? '' : 's'} · created {new Date(r.created_at).toLocaleDateString()}              </p>
+                {r.request_type === 'repair' ? 'Repair' : 'Trade-in'} · {r.device_type} · {r.photo_ids.length} photo{r.photo_ids.length === 1 ? '' : 's'} · created {new Date(r.created_at).toLocaleDateString()}
+              </p>
               <p className="desc">{r.description}</p>
               {EDITABLE.includes(r.status) && (
                 <div className="actions">
