@@ -9,9 +9,15 @@ if (!process.env.DATABASE_URL) {
 // Hosted PostgreSQL (Neon, Render, etc.) needs SSL; a local database does not.
 const isLocal = /localhost|127\.0\.0\.1|host=\/tmp/.test(process.env.DATABASE_URL);
 
+// Remove ?sslmode=... from the URL and set SSL below instead.
+// This stops pg's "SECURITY WARNING" about sslmode in the Render logs.
+const connectionString = process.env.DATABASE_URL
+  .replace(/([?&])sslmode=[^&]*&?/, '$1')
+  .replace(/[?&]$/, '');
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: isLocal ? false : { rejectUnauthorized: false },
+  connectionString,
+  ssl: isLocal ? false : { rejectUnauthorized: true },
   max: 10,
 });
 
