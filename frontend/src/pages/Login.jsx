@@ -10,6 +10,7 @@ export default function Login() {
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [showPw, setShowPw] = useState(false);
 
   if (user) return <Navigate to={homeFor(user.role)} replace />;
 
@@ -34,7 +35,10 @@ export default function Login() {
         <input type="email" autoComplete="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
       </Field>
       <Field label="Password">
-        <input type="password" autoComplete="current-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
+        <div style={{ display: 'flex', gap: '.5rem' }}>
+          <input type={showPw ? 'text' : 'password'} autoComplete="current-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
+          <button type="button" className="btn ghost small" onClick={() => setShowPw(!showPw)}>{showPw ? 'Hide' : 'Show'}</button>
+        </div>
       </Field>
       <button className="btn full" disabled={busy}>{busy ? 'Logging in…' : 'Log in'}</button>
       <p className="muted small">New to Revive? <Link to="/signup">Create an account</Link></p>
