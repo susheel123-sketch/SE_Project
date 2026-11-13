@@ -11,6 +11,7 @@ export default function Signup() {
   const [errors, setErrors] = useState({});
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
+  const [showPw, setShowPw] = useState(false);
 
   if (user) return <Navigate to={homeFor(user.role)} replace />;
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
@@ -57,7 +58,10 @@ export default function Signup() {
         <input value={form.phone} onChange={set('phone')} autoComplete="tel" />
       </Field>
       <Field label="Password" error={errors.password} hint="At least 8 characters">
-        <input type="password" value={form.password} onChange={set('password')} autoComplete="new-password" />
+        <div style={{ display: 'flex', gap: '.5rem' }}>
+          <input type={showPw ? 'text' : 'password'} value={form.password} onChange={set('password')} autoComplete="new-password" />
+          <button type="button" className="btn ghost small" onClick={() => setShowPw(!showPw)}>{showPw ? 'Hide' : 'Show'}</button>
+        </div>
       </Field>
       <button className="btn full" disabled={busy}>{busy ? 'Creating account…' : 'Sign up'}</button>
       <p className="muted small">Already have an account? <Link to="/login">Log in</Link></p>
