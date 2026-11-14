@@ -260,3 +260,18 @@ test('TC-36 health check reports the database is connected', async () => {
   assert.equal(res.status, 200);
   assert.equal(res.body.database, 'connected');
 });
+
+// ---------------- Added by Rohan Lohana (Sprint 1) ----------------
+let fivePhotoRequestId;
+test('TC-41 creating a request with exactly 5 photos is accepted', async () => {
+  const res = await newRequest(ownerToken, {}, [PNG, PNG, PNG, PNG, PNG]);
+  assert.equal(res.status, 201, JSON.stringify(res.body));
+  assert.equal(res.body.request.photo_ids.length, 5);
+  fivePhotoRequestId = res.body.request.request_id;
+});
+test('TC-42 editing that request to add a 6th photo is rejected', async () => {
+  const res = await api().put(`/api/requests/${fivePhotoRequestId}`).set(auth(ownerToken))
+    .field('device_type', 'Phone').field('brand_model', 'Samsung A52').field('description', 'Cracked screen')
+    .attach('photos', PNG, { filename: 'sixth.png', contentType: 'image/png' });
+  assert.equal(res.status, 400);
+});

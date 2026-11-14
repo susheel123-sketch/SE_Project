@@ -141,6 +141,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--green); out
 
 /* ---------- phones ---------- */
 @media (max-width: 720px) {
+  .btn.small { padding: .5rem .9rem; font-size: .9rem; }
   .grid-2, .grid-4, .hero-cards, .role-choice { grid-template-columns: 1fr; }
   .request-card { flex-direction: column; }
   .hero h1 { font-size: 1.7rem; }
