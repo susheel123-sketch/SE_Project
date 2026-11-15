@@ -17,6 +17,7 @@ export default function AdminShops() {
     setError('');
     setSavingId(shop.shop_id);
     try {
+      await new Promise((r) => setTimeout(r, 3000));
       const { shop: updated } = await api.verifyShop(shop.shop_id, !shop.is_verified);
 
       // Does the shop still belong in the tab that is open?
@@ -24,11 +25,11 @@ export default function AdminShops() {
         (status === 'unverified' && updated.is_verified) ||
         (status === 'verified' && !updated.is_verified);
 
-      if (leavesTab) {
-        setShops(shops.filter((s) => s.shop_id !== updated.shop_id));
-      } else {
-        setShops(shops.map((s) => (s.shop_id === updated.shop_id ? { ...s, is_verified: updated.is_verified } : s)));
-      }
+     if (leavesTab) {
+  setShops((prev) => prev.filter((s) => s.shop_id !== updated.shop_id));
+} else {
+  setShops((prev) => prev.map((s) => (s.shop_id === updated.shop_id ? { ...s, is_verified: updated.is_verified } : s)));
+}
     } catch (e) {
       setError(e.message);
     } finally {
@@ -59,7 +60,7 @@ export default function AdminShops() {
                 <td>{s.service_count}</td>
                 <td><span className={`badge ${s.is_verified ? 'badge-verified' : 'badge-unverified'}`}>{s.is_verified ? 'Verified' : 'Unverified'}</span></td>
                 <td className="right">
-                  <button type="button" className={s.is_verified ? 'btn ghost small' : 'btn small'} disabled={savingId === s.shop_id} onClick={() => toggle(s)}>
+                  <button type="button" className={s.is_verified ? 'btn ghost small' : 'btn small'} disabled={savingId !== null} onClick={() => toggle(s)}>
                     {savingId === s.shop_id ? 'Saving…' : s.is_verified ? 'Unverify' : 'Verify'}
                   </button>
                 </td>
