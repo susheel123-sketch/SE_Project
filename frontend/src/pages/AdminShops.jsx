@@ -12,12 +12,10 @@ export default function AdminShops() {
 
   const load = (s = status) => { setShops(null); api.adminShops(s).then((d) => setShops(d.shops)).catch((e) => setError(e.message)); };
   useEffect(() => { load(status); }, [status]); // eslint-disable-line react-hooks/exhaustive-deps
-
   const toggle = async (shop) => {
     setError('');
     setSavingId(shop.shop_id);
     try {
-      await new Promise((r) => setTimeout(r, 3000));
       const { shop: updated } = await api.verifyShop(shop.shop_id, !shop.is_verified);
 
       // Does the shop still belong in the tab that is open?
@@ -25,11 +23,11 @@ export default function AdminShops() {
         (status === 'unverified' && updated.is_verified) ||
         (status === 'verified' && !updated.is_verified);
 
-     if (leavesTab) {
-  setShops((prev) => prev.filter((s) => s.shop_id !== updated.shop_id));
-} else {
-  setShops((prev) => prev.map((s) => (s.shop_id === updated.shop_id ? { ...s, is_verified: updated.is_verified } : s)));
-}
+      if (leavesTab) {
+        setShops((prev) => prev.filter((s) => s.shop_id !== updated.shop_id));
+      } else {
+        setShops((prev) => prev.map((s) => (s.shop_id === updated.shop_id ? { ...s, is_verified: updated.is_verified } : s)));
+      }
     } catch (e) {
       setError(e.message);
     } finally {
