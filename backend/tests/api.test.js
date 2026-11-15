@@ -275,3 +275,31 @@ test('TC-42 editing that request to add a 6th photo is rejected', async () => {
     .attach('photos', PNG, { filename: 'sixth.png', contentType: 'image/png' });
   assert.equal(res.status, 400);
 });
+// ---------------- Added by Muhammad Alam (Sprint 1) ----------------
+test('TC-37 login with an empty email and password is rejected', async () => {
+  const res = await api().post('/api/auth/login').send({ email: '', password: '' });
+  assert.equal(res.status, 400);
+});
+
+test('TC-38 verifying a shop that does not exist returns 404', async () => {
+  const res = await api().patch('/api/admin/shops/999999/verify')
+    .set(auth(adminToken)).send({ verified: true });
+  assert.equal(res.status, 404);
+});
+
+test('TC-39 the public page of an unverified shop returns 404', async () => {
+  const token = await signup('Hidden Shop Owner', 'hidden-shop@test.com', 'shop');
+  const created = await api().post('/api/shops/me').set(auth(token)).send(shopBody());
+  assert.equal(created.status, 201);
+  assert.equal(created.body.shop.is_verified, false);
+
+  const res = await api().get(`/api/shops/${created.body.shop.shop_id}`);
+  assert.equal(res.status, 404);
+});
+
+test('TC-40 a new shop with no profile cannot add a service', async () => {
+  const token = await signup('No Profile Shop', 'no-profile@test.com', 'shop');
+  const res = await api().post('/api/shops/me/services').set(auth(token)).send(svcBody());
+  assert.equal(res.status, 400);
+});
+  
