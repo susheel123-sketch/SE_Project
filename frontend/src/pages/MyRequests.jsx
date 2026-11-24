@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { api } from '../api';
 import { Alert, AuthImage, StatusBadge } from '../components';
 
@@ -8,7 +8,8 @@ const EDITABLE = ['draft', 'open'];
 export default function MyRequests() {
   const [requests, setRequests] = useState(null);
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
+    const location = useLocation();
+  const [notice, setNotice] = useState(location.state?.notice || '');
 
   const load = () => api.myRequests().then((d) => setRequests(d.requests)).catch((e) => setError(e.message));
   useEffect(() => { load(); }, []);
@@ -58,6 +59,7 @@ export default function MyRequests() {
               <p className="desc">{r.description}</p>
               {EDITABLE.includes(r.status) && (
                 <div className="actions">
+                  {r.status === 'draft' && <Link to={`/requests/${r.request_id}/send`} className="btn small">Send to shops</Link>}
                   <Link to={`/requests/${r.request_id}/edit`} className="btn ghost small">Edit</Link>
                   <button type="button" className="btn danger small" onClick={() => cancel(r)}>Cancel request</button>
                 </div>
