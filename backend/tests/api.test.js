@@ -303,3 +303,15 @@ test('TC-40 a new shop with no profile cannot add a service', async () => {
   assert.equal(res.status, 400);
 });
   
+// ---------------- Story #29: Reject fake photo files ----------------
+test('TC-43 fake image file disguised as PNG is rejected with 400', async () => {
+  const fakePng = {
+    buf: Buffer.from('this is plain text, not an image'),
+    name: 'fake.png',
+    type: 'image/png',
+  };
+  const res = await newRequest(ownerToken, {}, [fakePng]);
+  assert.equal(res.status, 400);
+  assert.equal(res.body.error, 'This file is not a real JPG or PNG image.');
+  assert.equal(res.body.fields.photos, 'This file is not a real JPG or PNG image.');
+});
