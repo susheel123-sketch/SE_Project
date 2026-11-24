@@ -33,7 +33,6 @@ function isValidImageBytes(buffer) {
 }
 
 // Turn multer errors into friendly 400 responses.
-// Turn multer errors into friendly 400 responses.
 function handleUpload(req, res, next) {
   upload(req, res, (err) => {
     if (!err) {
