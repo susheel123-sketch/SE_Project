@@ -84,6 +84,42 @@ router.post('/forgot', async (req, res, next) => {
   } catch (err) { return next(err); }
 });
 
+// POST /api/auth/reset: set a new password using the token from /forgot
+router.post('/reset', async (req, res, next) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) {
+      return res.status(400).json({ error: 'Enter the token and your new password.' });
+    }
+    if (String(newPassword).length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+    }
+
+    const hash = await bcrypt.hash(String(newPassword), 10);
+
+    // One statement does everything, so it either all happens or none of it does:
+    // 1) burn the token (only if unused and not expired), 2) change that user's password.
+    const { rowCount } = await db.query(
+      `WITH used_token AS (
+         UPDATE password_reset_tokens
+            SET used = TRUE
+          WHERE token_hash = $1 AND used = FALSE AND expires_at > NOW()
+      RETURNING user_id
+       )
+       UPDATE users
+          SET password_hash = $2
+        WHERE user_id IN (SELECT user_id FROM used_token)`,
+      [hashToken(String(token).trim()), hash],
+    );
+
+    // Same message for a wrong, expired or already-used token.
+    if (!rowCount) {
+      return res.status(400).json({ error: 'This reset token is invalid, expired or already used.' });
+    }
+    return res.json({ message: 'Your password has been changed. You can now log in.' });
+  } catch (err) { return next(err); }
+});
+
 // GET /api/auth/me: who am I (used by the web app on page load)
 router.get('/me', requireAuth, async (req, res, next) => {
   try {
