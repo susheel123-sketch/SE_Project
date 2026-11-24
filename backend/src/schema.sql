@@ -11,6 +11,14 @@ CREATE TABLE IF NOT EXISTS users (
   role           VARCHAR(10)  NOT NULL CHECK (role IN ('owner', 'shop', 'admin')),
   created_at     TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+  token_id    SERIAL PRIMARY KEY,
+  user_id     INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  token_hash  VARCHAR(64) NOT NULL UNIQUE,
+  expires_at  TIMESTAMPTZ NOT NULL,
+  used        BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
 CREATE TABLE IF NOT EXISTS shops (
   shop_id        SERIAL PRIMARY KEY,
