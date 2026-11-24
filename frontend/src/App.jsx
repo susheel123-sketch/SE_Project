@@ -3,6 +3,8 @@ import { homeFor, useAuth } from './auth';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import MyRequests from './pages/MyRequests';
 import RequestForm from './pages/RequestForm';
 import ShopProfile from './pages/ShopProfile';
@@ -60,6 +62,8 @@ export default function App() {
           <Route path="/" element={user ? <Navigate to={homeFor(user.role)} replace /> : <Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/shops/:id" element={<PublicShop />} />
 
           <Route path="/requests" element={<Guard role="owner"><MyRequests /></Guard>} />

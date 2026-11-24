@@ -46,7 +46,9 @@ export const api = {
   signup: (b) => call('/api/auth/signup', { method: 'POST', body: b }),
   login: (b) => call('/api/auth/login', { method: 'POST', body: b }),
   me: () => call('/api/auth/me'),
-
+  forgotPassword: (b) => call('/api/auth/forgot', { method: 'POST', body: b }),
+  resetPassword: (b) => call('/api/auth/reset', { method: 'POST', body: b }),
+  
   myShop: () => call('/api/shops/me'),
   createShop: (b) => call('/api/shops/me', { method: 'POST', body: b }),
   updateShop: (b) => call('/api/shops/me', { method: 'PUT', body: b }),
