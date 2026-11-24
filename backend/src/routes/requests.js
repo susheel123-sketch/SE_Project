@@ -94,7 +94,26 @@ router.get('/mine', requireRole('owner'), async (req, res, next) => {
     res.json({ requests: rows });
   } catch (err) { next(err); }
 });
-
+// GET /api/requests/incoming — requests that owners have sent to my shop (newest first)
+router.get('/incoming', requireRole('shop'), async (req, res, next) => {
+  try {
+    const { rows } = await db.query(
+      `SELECT r.request_id, r.request_type, r.device_type, r.brand_model, r.description, r.condition,
+              r.status, r.created_at, rs.sent_at, u.name AS owner_name,
+              COALESCE(ARRAY_AGG(p.photo_id ORDER BY p.photo_id) FILTER (WHERE p.photo_id IS NOT NULL), '{}') AS photo_ids
+       FROM shops s
+       JOIN request_shops rs ON rs.shop_id = s.shop_id
+       JOIN requests r ON r.request_id = rs.request_id
+       JOIN users u ON u.user_id = r.owner_id
+       LEFT JOIN request_photos p ON p.request_id = r.request_id
+       WHERE s.user_id = $1 AND r.status <> 'draft'
+       GROUP BY r.request_id, rs.sent_at, u.name
+       ORDER BY rs.sent_at DESC`,
+      [req.user.id],
+    );
+    res.json({ requests: rows });
+  } catch (err) { next(err); }
+});
 // GET /api/requests/:id
 router.get('/:id(\\d+)', requireRole('owner'), async (req, res, next) => {
   try {
