@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const db = require('../db');
 const { signToken, requireAuth } = require('../middleware/auth');
@@ -8,6 +9,7 @@ const router = express.Router();
 const SELF_SIGNUP_ROLES = ['owner', 'shop']; // admin accounts cannot self-register
 
 const publicUser = (u) => ({ id: u.user_id, name: u.name, email: u.email, phone: u.phone, role: u.role });
+const hashToken = (t) => crypto.createHash('sha256').update(t).digest('hex');
 
 // POST /api/auth/signup
 router.post('/signup', async (req, res, next) => {
@@ -50,7 +52,39 @@ router.post('/login', async (req, res, next) => {
   } catch (err) { return next(err); }
 });
 
-// GET /api/auth/me — who am I (used by the web app on page load)
+// POST /api/auth/forgot: start a password reset (no email is sent in this project)
+router.post('/forgot', async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Enter your email address.' });
+
+    // Same message for every valid request, so nobody can find out which emails exist.
+    const message = 'If this email is registered, a reset token has been created.';
+
+    const { rows } = await db.query(
+      'SELECT user_id FROM users WHERE email = $1',
+      [String(email).trim().toLowerCase()],
+    );
+    const user = rows[0];
+    if (!user) return res.json({ message });
+
+    const token = crypto.randomBytes(32).toString('hex');
+    await db.query(
+      'UPDATE password_reset_tokens SET used = TRUE WHERE user_id = $1 AND used = FALSE',
+      [user.user_id],
+    );
+    await db.query(
+      `INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)
+       VALUES ($1, $2, NOW() + INTERVAL '30 minutes')`,
+      [user.user_id, hashToken(token)],
+    );
+
+    // DEMO ONLY: we do not send emails, so the token is shown on screen.
+    return res.json({ message, demoToken: token });
+  } catch (err) { return next(err); }
+});
+
+// GET /api/auth/me: who am I (used by the web app on page load)
 router.get('/me', requireAuth, async (req, res, next) => {
   try {
     const { rows } = await db.query('SELECT * FROM users WHERE user_id = $1', [req.user.id]);
