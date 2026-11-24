@@ -40,6 +40,7 @@ export default function Login() {
           <button type="button" className="btn ghost small" onClick={() => setShowPw(!showPw)}>{showPw ? 'Hide' : 'Show'}</button>
         </div>
       </Field>
+      <p className="small"><Link to="/forgot-password">Forgot password?</Link></p>
       <button className="btn full" disabled={busy}>{busy ? 'Logging in…' : 'Log in'}</button>
       <p className="muted small">New to Revive? <Link to="/signup">Create an account</Link></p>
     </form>
