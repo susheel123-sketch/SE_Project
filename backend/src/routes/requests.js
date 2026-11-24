@@ -22,16 +22,37 @@ const upload = multer({
   },
 }).array('photos', MAX_PHOTOS);
 
+
+function isValidImageBytes(buffer) {
+  if (!buffer || buffer.length < 4) return false;
+  // Real JPG starts with FF D8 FF
+  const isJpg = buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+  // Real PNG starts with 89 50 4E 47
+  const isPng = buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47;
+  return isJpg || isPng;
+}
+
+// Turn multer errors into friendly 400 responses.
 // Turn multer errors into friendly 400 responses.
 function handleUpload(req, res, next) {
   upload(req, res, (err) => {
-    if (!err) return next();
+    if (!err) {
+      const files = req.files || [];
+      for (const f of files) {
+        if (!isValidImageBytes(f.buffer)) {
+          const msg = 'This file is not a real JPG or PNG image.';
+          return res.status(400).json({ error: msg, fields: { photos: msg } });
+        }
+      }
+      return next();
+    }
     if (err.code === 'LIMIT_FILE_SIZE') return res.status(400).json({ error: 'Each photo must be 5 MB or smaller.', fields: { photos: 'Each photo must be 5 MB or smaller.' } });
     if (err.code === 'LIMIT_FILE_COUNT' || err.code === 'LIMIT_UNEXPECTED_FILE') return res.status(400).json({ error: `You can upload at most ${MAX_PHOTOS} photos.`, fields: { photos: `At most ${MAX_PHOTOS} photos.` } });
     if (err.status === 400) return res.status(400).json({ error: err.message, fields: { photos: err.message } });
     return next(err);
   });
 }
+
 
 function validateRequest(body) {
   return required(body, { device_type: 'Device type', brand_model: 'Brand / model', description: 'Problem description' });
