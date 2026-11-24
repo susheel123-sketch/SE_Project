@@ -20,5 +20,23 @@ router.get('/:id(\\d+)', requireAuth, async (req, res, next) => {
     return res.send(photo.data);
   } catch (err) { return next(err); }
 });
-
+// GET /api/photos/:id — the request's owner, admins, and shops the request was sent to can see it.
+router.get('/:id(\\d+)', requireAuth, async (req, res, next) => {
+  try {
+    const { rows } = await db.query(
+      `SELECT p.mime_type, p.data, r.owner_id,
+              EXISTS (SELECT 1 FROM request_shops rs JOIN shops s ON s.shop_id = rs.shop_id
+                      WHERE rs.request_id = r.request_id AND s.user_id = $2) AS sent_to_me
+       FROM request_photos p
+       JOIN requests r ON r.request_id = p.request_id WHERE p.photo_id=$1`, [req.params.id, req.user.id]);
+    const photo = rows[0];
+    const allowed = photo && (photo.owner_id === req.user.id || req.user.role === 'admin' || photo.sent_to_me);
+    if (!allowed) {
+      return res.status(404).json({ error: 'Photo not found.' });
+    }
+    res.set('Content-Type', photo.mime_type);
+    res.set('Cache-Control', 'private, max-age=3600');
+    return res.send(photo.data);
+  } catch (err) { return next(err); }
+});
 module.exports = router;
