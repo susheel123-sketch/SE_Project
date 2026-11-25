@@ -319,7 +319,7 @@ let sentRequest;
 test('TC-44 owner sends a draft request to 2 verified shops; it becomes open', async () => {
   s15 = [await verifiedShop(1), await verifiedShop(2), await verifiedShop(3), await verifiedShop(4)];
   sentRequest = (await newRequest(ownerToken)).body.request;
-  const res = await sendTo(ownerTokten, sentRequest.request_id, [s15[0].id, s15[1].id]);
+  const res = await sendTo(ownerToken, sentRequest.request_id, [s15[0].id, s15[1].id]);
   assert.equal(res.status, 200);
   assert.equal(res.body.request.status, 'open');
   assert.deepEqual(res.body.shop_ids, [s15[0].id, s15[1].id]);
