@@ -5,14 +5,16 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import MyRequests from './pages/MyRequests';
 import RequestForm from './pages/RequestForm';
+import SendRequest from './pages/SendRequest';
 import ShopProfile from './pages/ShopProfile';
 import ShopServices from './pages/ShopServices';
+import ShopInbox from './pages/ShopInbox';
 import AdminShops from './pages/AdminShops';
 import PublicShop from './pages/PublicShop';
 
 const NAV = {
   owner: [['/requests', 'My Requests'], ['/requests/new', 'New Request']],
-  shop: [['/shop/profile', 'Shop Profile'], ['/shop/services', 'My Services']],
+    shop: [['/shop/requests', 'Incoming Requests'], ['/shop/profile', 'Shop Profile'], ['/shop/services', 'My Services']],
   admin: [['/admin/shops', 'Verify Shops']],
 };
 
@@ -65,9 +67,11 @@ export default function App() {
           <Route path="/requests" element={<Guard role="owner"><MyRequests /></Guard>} />
           <Route path="/requests/new" element={<Guard role="owner"><RequestForm /></Guard>} />
           <Route path="/requests/:id/edit" element={<Guard role="owner"><RequestForm /></Guard>} />
+          <Route path="/requests/:id/send" element={<Guard role="owner"><SendRequest /></Guard>} />
 
           <Route path="/shop/profile" element={<Guard role="shop"><ShopProfile /></Guard>} />
           <Route path="/shop/services" element={<Guard role="shop"><ShopServices /></Guard>} />
+          <Route path="/shop/requests" element={<Guard role="shop"><ShopInbox /></Guard>} />
 
           <Route path="/admin/shops" element={<Guard role="admin"><AdminShops /></Guard>} />
           <Route path="*" element={<p className="center muted">Page not found. <Link to="/">Go home</Link></p>} />

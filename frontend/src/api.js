@@ -64,4 +64,7 @@ export const api = {
   createRequest: (form) => call('/api/requests', { method: 'POST', form }),
   updateRequest: (id, form) => call(`/api/requests/${id}`, { method: 'PUT', form }),
   cancelRequest: (id) => call(`/api/requests/${id}/cancel`, { method: 'PATCH' }),
+  sendRequest: (id, shopIds) => call(`/api/requests/${id}/send`, { method: 'POST', body: { shop_ids: shopIds } }),
+  incomingRequests: () => call('/api/requests/incoming'),
+  verifiedShops: () => call('/api/shops'),
 };

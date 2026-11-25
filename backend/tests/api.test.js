@@ -302,4 +302,65 @@ test('TC-40 a new shop with no profile cannot add a service', async () => {
   const res = await api().post('/api/shops/me/services').set(auth(token)).send(svcBody());
   assert.equal(res.status, 400);
 });
-  
+
+// ---------- Sprint 2 · Story #15: owner sends a request to up to 3 shops ----------
+
+const verifiedShop = async (n) => {
+  const t = await signup(`Shop15 ${n}`, `shop15-${n}@test.com`, 'shop');
+  const { body } = await api().post('/api/shops/me').set(auth(t)).send(shopBody({ shop_name: `Shop15 ${n}` }));
+  await api().patch(`/api/admin/shops/${body.shop.shop_id}/verify`).set(auth(adminToken)).send({ verified: true });
+  return { token: t, id: body.shop.shop_id };
+};
+const sendTo = (token, requestId, shopIds) => api().post(`/api/requests/${requestId}/send`).set(auth(token)).send({ shop_ids: shopIds });
+
+let s15 = [];
+let sentRequest;
+
+test('TC-44 owner sends a draft request to 2 verified shops; it becomes open', async () => {
+  s15 = [await verifiedShop(1), await verifiedShop(2), await verifiedShop(3), await verifiedShop(4)];
+  sentRequest = (await newRequest(ownerToken)).body.request;
+  const res = await sendTo(ownerToken, sentRequest.request_id, [s15[0].id, s15[1].id]);
+  assert.equal(res.status, 200);
+  assert.equal(res.body.request.status, 'open');
+  assert.deepEqual(res.body.shop_ids, [s15[0].id, s15[1].id]);
+});
+
+test('TC-45 sending to 0 shops or more than 3 shops is rejected', async () => {
+  const r = (await newRequest(ownerToken)).body.request;
+  assert.equal((await sendTo(ownerToken, r.request_id, [])).status, 400);
+  assert.equal((await sendTo(ownerToken, r.request_id, s15.map((s) => s.id))).status, 400);
+});
+
+test('TC-46 sending to an unverified shop is rejected', async () => {
+  const t = await signup('Unverified15', 'unverified15@test.com', 'shop');
+  const { body } = await api().post('/api/shops/me').set(auth(t)).send(shopBody({ shop_name: 'Unverified15' }));
+  const r = (await newRequest(ownerToken)).body.request;
+  assert.equal((await sendTo(ownerToken, r.request_id, [s15[0].id, body.shop.shop_id])).status, 400);
+});
+
+test('TC-47 a request cannot be sent twice', async () => {
+  assert.equal((await sendTo(ownerToken, sentRequest.request_id, [s15[2].id])).status, 409);
+});
+
+test("TC-48 only the request's owner can send it; shops cannot", async () => {
+  const r = (await newRequest(ownerToken)).body.request;
+  assert.equal((await sendTo(owner2Token, r.request_id, [s15[0].id])).status, 404);
+  assert.equal((await sendTo(s15[0].token, r.request_id, [s15[0].id])).status, 403);
+});
+
+test('TC-49 a shop sees only the requests sent to it, without the IMEI', async () => {
+  const inbox1 = (await api().get('/api/requests/incoming').set(auth(s15[0].token))).body.requests;
+  const inbox3 = (await api().get('/api/requests/incoming').set(auth(s15[2].token))).body.requests;
+  const mine = inbox1.find((x) => x.request_id === sentRequest.request_id);
+  assert.ok(mine);
+  assert.ok(mine.owner_name);
+  assert.equal(mine.imei_serial, undefined);
+  assert.ok(!inbox3.some((x) => x.request_id === sentRequest.request_id));
+  assert.equal((await api().get('/api/requests/incoming').set(auth(ownerToken))).status, 403);
+});
+
+test('TC-50 a shop can see photos of requests sent to it, but not of others', async () => {
+  const photoId = (await api().get(`/api/requests/${sentRequest.request_id}`).set(auth(ownerToken))).body.request.photo_ids[0];
+  assert.equal((await api().get(`/api/photos/${photoId}`).set(auth(s15[0].token))).status, 200);
+  assert.equal((await api().get(`/api/photos/${photoId}`).set(auth(s15[2].token))).status, 404);
+});

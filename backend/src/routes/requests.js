@@ -94,7 +94,26 @@ router.get('/mine', requireRole('owner'), async (req, res, next) => {
     res.json({ requests: rows });
   } catch (err) { next(err); }
 });
-
+// GET /api/requests/incoming — requests that owners have sent to my shop (newest first)
+router.get('/incoming', requireRole('shop'), async (req, res, next) => {
+  try {
+    const { rows } = await db.query(
+      `SELECT r.request_id, r.request_type, r.device_type, r.brand_model, r.description, r.condition,
+              r.status, r.created_at, rs.sent_at, u.name AS owner_name,
+              COALESCE(ARRAY_AGG(p.photo_id ORDER BY p.photo_id) FILTER (WHERE p.photo_id IS NOT NULL), '{}') AS photo_ids
+       FROM shops s
+       JOIN request_shops rs ON rs.shop_id = s.shop_id
+       JOIN requests r ON r.request_id = rs.request_id
+       JOIN users u ON u.user_id = r.owner_id
+       LEFT JOIN request_photos p ON p.request_id = r.request_id
+       WHERE s.user_id = $1 AND r.status <> 'draft'
+       GROUP BY r.request_id, rs.sent_at, u.name
+       ORDER BY rs.sent_at DESC`,
+      [req.user.id],
+    );
+    res.json({ requests: rows });
+  } catch (err) { next(err); }
+});
 // GET /api/requests/:id
 router.get('/:id(\\d+)', requireRole('owner'), async (req, res, next) => {
   try {
@@ -155,5 +174,40 @@ router.patch('/:id(\\d+)/cancel', requireRole('owner'), async (req, res, next) =
     res.json({ request: rows[0] });
   } catch (err) { next(err); }
 });
-
+// POST /api/requests/:id/send — send a draft request to 1–3 verified shops   body: { "shop_ids": [1, 2] }
+router.post('/:id(\\d+)/send', requireRole('owner'), async (req, res, next) => {
+  const client = await db.pool.connect();
+  try {
+    const r = await loadOwnRequest(req, res);
+    if (!r) return;
+    if (r.status !== 'draft') {
+      return res.status(409).json({ error: 'This request has already been sent to shops.' });
+    }
+    const ids = [...new Set((Array.isArray(req.body.shop_ids) ? req.body.shop_ids : []).map(Number))];
+    if (ids.length < 1 || ids.some((id) => !Number.isInteger(id) || id <= 0)) {
+      return res.status(400).json({ error: 'Choose at least one shop.' });
+    }
+    if (ids.length > 3) {
+      return res.status(400).json({ error: 'You can send a request to at most 3 shops.' });
+    }
+    const { rows: shops } = await client.query(
+      'SELECT shop_id FROM shops WHERE shop_id = ANY($1::int[]) AND is_verified = TRUE', [ids]);
+    if (shops.length !== ids.length) {
+      return res.status(400).json({ error: 'You can only send requests to verified shops.' });
+    }
+    await client.query('BEGIN');
+    for (const id of ids) {
+      await client.query('INSERT INTO request_shops (request_id, shop_id) VALUES ($1, $2)', [r.request_id, id]);
+    }
+    const { rows } = await client.query(
+      "UPDATE requests SET status = 'open', updated_at = NOW() WHERE request_id = $1 RETURNING *", [r.request_id]);
+    await client.query('COMMIT');
+    return res.json({ request: rows[0], shop_ids: ids });
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    return next(err);
+  } finally {
+    client.release();
+  }
+});
 module.exports = router;
