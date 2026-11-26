@@ -12,7 +12,7 @@ export default function RequestForm() {
   const { id } = useParams();
   const editing = Boolean(id);
   const navigate = useNavigate();
-  const [form, setForm] = useState({ device_type: '', brand_model: '', description: '' });
+  const [form, setForm] = useState({request_type: 'repair',device_type: '', brand_model: '',description: '',condition: '',imei_serial: '',seller_declared: false,});
   const [existing, setExisting] = useState([]); // photo ids already saved
   const [removed, setRemoved] = useState([]);
   const [files, setFiles] = useState([]);
@@ -24,7 +24,7 @@ export default function RequestForm() {
   useEffect(() => {
     if (!editing) return;
     api.getRequest(id).then(({ request }) => {
-      setForm({ device_type: request.device_type, brand_model: request.brand_model, description: request.description });
+      setForm({request_type: request.request_type || 'repair',device_type: request.device_type, brand_model: request.brand_model,description: request.description,condition: request.condition || '',imei_serial: request.imei_serial || '',seller_declared: Boolean(request.seller_declared),});
       setExisting(request.photo_ids);
       setLoaded(true);
     }).catch((e) => setMessage(e.message));
@@ -56,6 +56,11 @@ export default function RequestForm() {
     if (!form.brand_model.trim()) local.brand_model = 'Brand / model is required.';
     if (!form.description.trim()) local.description = 'Problem description is required.';
     if (total < 1) local.photos = 'Add at least one photo.';
+    if (form.request_type === 'trade_in') {
+    if (!form.condition) local.condition = 'Device condition is required.';
+    if (!form.imei_serial.trim()) local.imei_serial = 'IMEI or serial number is required.';
+    if (!form.seller_declared) local.seller_declared = 'You must confirm the seller declaration.';
+    }
     if (Object.keys(local).length) { setErrors(local); setMessage('Please fix the highlighted fields.'); return; }
 
     const fd = new FormData();
@@ -83,6 +88,12 @@ export default function RequestForm() {
       <h1>{editing ? 'Edit request' : 'New repair request'}</h1>
       <p className="muted">Describe the problem clearly and add photos so shops can give you an accurate quote.</p>
       <Alert>{message}</Alert>
+      <Field label="Request type" error={errors.request_type}>
+        <select value={form.request_type} onChange={set('request_type')}>
+          <option value="repair">Repair</option>
+          <option value="trade_in">Trade-in</option>
+        </select>
+      </Field>
       <div className="grid-2">
         <Field label="Device type" error={errors.device_type}>
           <select value={form.device_type} onChange={set('device_type')}>
@@ -97,6 +108,37 @@ export default function RequestForm() {
       <Field label="What is wrong?" error={errors.description}>
         <textarea rows={4} value={form.description} onChange={set('description')} placeholder="e.g. Screen cracked after a fall; touch works only on the top half." />
       </Field>
+      {form.request_type === 'trade_in' && (
+        <>
+          <div className="grid-2">
+            <Field label="Condition" error={errors.condition}>
+              <select value={form.condition} onChange={set('condition')}>
+                <option value="">Choose…</option>
+                <option value="working">Working</option>
+                <option value="partly_working">Partly working</option>
+                <option value="dead">Dead</option>
+              </select>
+            </Field>
+            <Field label="IMEI or serial number" error={errors.imei_serial}>
+              <input
+                value={form.imei_serial}
+                onChange={set('imei_serial')}
+                placeholder="e.g. 356938035643809"
+              />
+            </Field>
+          </div>
+          <Field label="Seller declaration" error={errors.seller_declared}>
+            <label style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <input
+                type="checkbox"
+                checked={form.seller_declared}
+                onChange={(e) => setForm({ ...form, seller_declared: e.target.checked })}
+              />
+              I own this device and it is not stolen
+            </label>
+          </Field>
+        </>
+      )}
       <Field label={`Photos (${total}/${MAX})`} error={errors.photos} hint="JPG or PNG, up to 5 MB each, 1–5 photos">
         <input type="file" accept="image/jpeg,image/png" multiple onChange={addFiles} disabled={total >= MAX} />
       </Field>
