@@ -23,6 +23,7 @@ app.use('/api/shops', require('./routes/shops'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/requests', require('./routes/requests'));
 app.use('/api/photos', require('./routes/photos'));
+app.use('/api/quotes', require('./routes/quotes'));
 
 app.use('/api', (req, res) => res.status(404).json({ error: 'Not found.' }));
 
