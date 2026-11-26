@@ -325,3 +325,30 @@ test('TC-43b real JPG photo uploads successfully', async () => {
   assert.equal(res.status, 201);
   assert.equal(res.body.request.photo_ids.length, 1);
 });
+
+// ---------------- Story #7: Trade-in requests ----------------
+test('TC-51 trade-in request without condition, IMEI, or declaration is rejected with 400', async () => {
+  const res = await newRequest(ownerToken, { request_type: 'trade_in' }, [PNG]);
+  assert.equal(res.status, 400);
+  assert.ok(res.body.fields.condition);
+  assert.ok(res.body.fields.imei_serial);
+  assert.ok(res.body.fields.seller_declared);
+});
+
+test('TC-52 valid trade-in request is created with condition, IMEI, and seller declaration', async () => {
+  const res = await newRequest(
+    ownerToken,
+    {
+      request_type: 'trade_in',
+      condition: 'working',
+      imei_serial: '356938035643809',
+      seller_declared: 'true',
+    },
+    [PNG],
+  );
+  assert.equal(res.status, 201);
+  assert.equal(res.body.request.request_type, 'trade_in');
+  assert.equal(res.body.request.condition, 'working');
+  assert.equal(res.body.request.imei_serial, '356938035643809');
+  assert.equal(res.body.request.seller_declared, true);
+});

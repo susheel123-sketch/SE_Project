@@ -10,6 +10,8 @@ const MAX_PHOTOS = 5;
 const MAX_BYTES = 5 * 1024 * 1024;
 const ALLOWED = ['image/jpeg', 'image/png'];
 const EDITABLE = ['draft', 'open']; // no quote/offer accepted yet
+const REQUEST_TYPES = ['repair', 'trade_in'];
+const CONDITIONS = ['working', 'partly_working', 'dead'];
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -54,9 +56,15 @@ function handleUpload(req, res, next) {
 
 
 function validateRequest(body) {
-  return required(body, { device_type: 'Device type', brand_model: 'Brand / model', description: 'Problem description' });
+  const errors = required(body, { device_type: 'Device type', brand_model: 'Brand / model', description: 'Problem description' });
+  if (body.request_type && !REQUEST_TYPES.includes(body.request_type)) errors.request_type = 'Request type must be repair or trade-in.';
+  if (body.request_type === 'trade_in') {
+    if (!CONDITIONS.includes(body.condition)) errors.condition = 'Choose working, partly working or dead.';
+    if (!String(body.imei_serial || '').trim()) errors.imei_serial = 'IMEI or serial number is required.';
+    if (body.seller_declared !== 'true') errors.seller_declared = 'You must confirm you own this device and it is not stolen.';
+  }
+  return errors;
 }
-
 async function photoIds(requestId) {
   const { rows } = await db.query('SELECT photo_id FROM request_photos WHERE request_id=$1 ORDER BY photo_id', [requestId]);
   return rows.map((r) => r.photo_id);
@@ -88,10 +96,12 @@ router.post('/', requireRole('owner'), handleUpload, async (req, res, next) => {
   try {
     await client.query('BEGIN');
     const b = req.body;
+    const isTrade = b.request_type === 'trade_in';
     const { rows } = await client.query(
-      `INSERT INTO requests (owner_id, request_type, device_type, brand_model, description)
-       VALUES ($1, 'repair', $2, $3, $4) RETURNING *`,
-      [req.user.id, b.device_type.trim(), b.brand_model.trim(), b.description.trim()],
+      `INSERT INTO requests (owner_id, request_type, device_type, brand_model, description, condition, imei_serial, seller_declared)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [req.user.id, isTrade ? 'trade_in' : 'repair', b.device_type.trim(), b.brand_model.trim(), b.description.trim(),
+        isTrade ? b.condition : null, isTrade ? b.imei_serial.trim() : null, isTrade],
     );
     await savePhotos(client, rows[0].request_id, files);
     await client.query('COMMIT');
@@ -134,7 +144,7 @@ router.put('/:id(\\d+)', requireRole('owner'), handleUpload, async (req, res, ne
     if (!EDITABLE.includes(r.status)) {
       return res.status(409).json({ error: `This request is ${r.status} and can no longer be edited.` });
     }
-    const errors = validateRequest(req.body);
+        const errors = validateRequest({ ...req.body, request_type: r.request_type, seller_declared: String(r.seller_declared) });
     const remove = String(req.body.remove_photo_ids || '').split(',').map(Number).filter(Boolean);
     const current = await photoIds(r.request_id);
     const keep = current.filter((id) => !remove.includes(id));
@@ -144,11 +154,14 @@ router.put('/:id(\\d+)', requireRole('owner'), handleUpload, async (req, res, ne
     if (respondIfErrors(res, errors)) return;
 
     await client.query('BEGIN');
+    
     const b = req.body;
+    const isTrade = r.request_type === 'trade_in';
     const { rows } = await client.query(
-      `UPDATE requests SET device_type=$2, brand_model=$3, description=$4, updated_at=NOW()
+      `UPDATE requests SET device_type=$2, brand_model=$3, description=$4, condition=$5, imei_serial=$6, updated_at=NOW()
        WHERE request_id=$1 RETURNING *`,
-      [r.request_id, b.device_type.trim(), b.brand_model.trim(), b.description.trim()],
+      [r.request_id, b.device_type.trim(), b.brand_model.trim(), b.description.trim(),
+        isTrade ? b.condition : null, isTrade ? b.imei_serial.trim() : null],
     );
     if (remove.length) {
       await client.query('DELETE FROM request_photos WHERE request_id=$1 AND photo_id = ANY($2::int[])', [r.request_id, remove]);
