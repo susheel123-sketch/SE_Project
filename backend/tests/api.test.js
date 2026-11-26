@@ -6,6 +6,7 @@ const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const request = require('supertest');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const db = require('../src/db');
 const migrate = require('../src/migrate');
 const app = require('../src/app');
@@ -16,6 +17,7 @@ const BIG = Buffer.alloc(5 * 1024 * 1024 + 10, 1);
 
 const api = () => request(app);
 const auth = (t) => ({ Authorization: `Bearer ${t}` });
+const sha256 = (t) => crypto.createHash('sha256').update(t).digest('hex');
 let ownerToken; let owner2Token; let shopToken; let shop2Token; let adminToken;
 
 async function signup(name, email, role, password = 'password123') {
@@ -303,3 +305,43 @@ test('TC-40 a new shop with no profile cannot add a service', async () => {
   assert.equal(res.status, 400);
 });
   
+// ---------------- Added by Muhammad Alam (Sprint 2): #20 Profile ----------------
+test('TC-49 view my own profile returns my details', async () => {
+  const res = await api().get('/api/profile').set(auth(ownerToken));
+  assert.equal(res.status, 200, JSON.stringify(res.body));
+  assert.equal(res.body.user.email, 'owner1@test.com');
+  assert.equal(res.body.user.name, 'Owner One');
+});
+
+test('TC-50 viewing profile with no token is rejected', async () => {
+  const res = await api().get('/api/profile');
+  assert.equal(res.status, 401);
+});
+
+test('TC-51 editing name and phone updates the profile', async () => {
+  const res = await api().put('/api/profile').set(auth(owner2Token))
+    .send({ name: 'Owner Two Updated', email: 'owner2@test.com', phone: '03001234567' });
+  assert.equal(res.status, 200, JSON.stringify(res.body));
+  assert.equal(res.body.user.name, 'Owner Two Updated');
+  assert.equal(res.body.user.phone, '03001234567');
+});
+
+test('TC-52 editing profile with a blank name is rejected', async () => {
+  const res = await api().put('/api/profile').set(auth(owner2Token))
+    .send({ name: '', email: 'owner2@test.com' });
+  assert.equal(res.status, 400);
+  assert.ok(res.body.fields.name);
+});
+
+test('TC-53 editing profile with an invalid email format is rejected', async () => {
+  const res = await api().put('/api/profile').set(auth(owner2Token))
+    .send({ name: 'Owner Two', email: 'not-an-email' });
+  assert.equal(res.status, 400);
+  assert.ok(res.body.fields.email);
+});
+
+test('TC-54 editing profile with an email already used by another user is rejected', async () => {
+  const res = await api().put('/api/profile').set(auth(owner2Token))
+    .send({ name: 'Owner Two', email: 'owner1@test.com' });
+  assert.equal(res.status, 409);
+});
