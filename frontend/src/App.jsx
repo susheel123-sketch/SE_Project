@@ -9,11 +9,12 @@ import ShopProfile from './pages/ShopProfile';
 import ShopServices from './pages/ShopServices';
 import AdminShops from './pages/AdminShops';
 import PublicShop from './pages/PublicShop';
+import Profile from './pages/Profile';
 
 const NAV = {
-  owner: [['/requests', 'My Requests'], ['/requests/new', 'New Request']],
-  shop: [['/shop/profile', 'Shop Profile'], ['/shop/services', 'My Services']],
-  admin: [['/admin/shops', 'Verify Shops']],
+  owner: [['/requests', 'My Requests'], ['/requests/new', 'New Request'], ['/profile', 'My Profile']],
+  shop: [['/shop/profile', 'Shop Profile'], ['/shop/services', 'My Services'], ['/profile', 'My Profile']],
+  admin: [['/admin/shops', 'Verify Shops'], ['/profile', 'My Profile']],
 };
 
 // Sends logged-out users to log in, and users with the wrong role to their own home page.
@@ -70,6 +71,7 @@ export default function App() {
           <Route path="/shop/services" element={<Guard role="shop"><ShopServices /></Guard>} />
 
           <Route path="/admin/shops" element={<Guard role="admin"><AdminShops /></Guard>} />
+          <Route path="/profile" element={<Guard><Profile /></Guard>} />
           <Route path="*" element={<p className="center muted">Page not found. <Link to="/">Go home</Link></p>} />
         </Routes>
       </main>
