@@ -302,7 +302,28 @@ test('TC-40 a new shop with no profile cannot add a service', async () => {
   const res = await api().post('/api/shops/me/services').set(auth(token)).send(svcBody());
   assert.equal(res.status, 400);
 });
-
+// ---------------- Story #29: Reject fake photo files ----------------
+test('TC-43 fake image file disguised as PNG is rejected with 400', async () => {
+  const fakePng = {
+    buf: Buffer.from('this is plain text, not an image'),
+    name: 'fake.png',
+    type: 'image/png',
+  };
+  const res = await newRequest(ownerToken, {}, [fakePng]);
+  assert.equal(res.status, 400);
+  assert.equal(res.body.error, 'This file is not a real JPG or PNG image.');
+  assert.equal(res.body.fields.photos, 'This file is not a real JPG or PNG image.');
+});
+test('TC-43b real JPG photo uploads successfully', async () => {
+  const realJpg = {
+    buf: Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01]),
+    name: 'real.jpg',
+    type: 'image/jpeg',
+  };
+  const res = await newRequest(ownerToken, {}, [realJpg]);
+  assert.equal(res.status, 201);
+  assert.equal(res.body.request.photo_ids.length, 1);
+});
 // ---------- Sprint 2 · Story #15: owner sends a request to up to 3 shops ----------
 
 const verifiedShop = async (n) => {
