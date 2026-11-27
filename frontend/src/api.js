@@ -55,6 +55,7 @@ export const api = {
   updateService: (id, b) => call(`/api/shops/me/services/${id}`, { method: 'PUT', body: b }),
   deleteService: (id) => call(`/api/shops/me/services/${id}`, { method: 'DELETE' }),
   publicShop: (id) => call(`/api/shops/${id}`),
+    searchShops: (params) => call(`/api/shops?${new URLSearchParams(params).toString()}`),
 
   adminShops: (status) => call(`/api/admin/shops?status=${status}`),
   verifyShop: (id, verified) => call(`/api/admin/shops/${id}/verify`, { method: 'PATCH', body: { verified } }),
