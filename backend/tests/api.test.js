@@ -325,3 +325,52 @@ test('TC-43b real JPG photo uploads successfully', async () => {
   assert.equal(res.status, 201);
   assert.equal(res.body.request.photo_ids.length, 1);
 });
+// ---------------- Added by Muhammad Alam (Sprint 2): #8 Search ----------------
+test('TC-55 search setup: create and verify a shop with a unique name and category', async () => {
+  const token = await signup('Search Test Owner', 'search-shop@test.com', 'shop');
+  const created = await api().post('/api/shops/me').set(auth(token))
+    .send(shopBody({ shop_name: 'Zeeshan Electronics Hub' }));
+  assert.equal(created.status, 201, JSON.stringify(created.body));
+  global.__searchShopId = created.body.shop.shop_id;
+
+  const svc = await api().post('/api/shops/me/services').set(auth(token))
+    .send(svcBody({ device_category: 'Tablet' }));
+  assert.equal(svc.status, 201, JSON.stringify(svc.body));
+
+  const verified = await api().patch(`/api/admin/shops/${global.__searchShopId}/verify`)
+    .set(auth(adminToken)).send({ verified: true });
+  assert.equal(verified.status, 200, JSON.stringify(verified.body));
+});
+
+test('TC-56 searching shops by name returns only matching shops', async () => {
+  const res = await api().get('/api/shops?search=Zeeshan');
+  assert.equal(res.status, 200, JSON.stringify(res.body));
+  assert.ok(res.body.shops.some((s) => s.shop_id === global.__searchShopId));
+  assert.ok(res.body.shops.every((s) => s.shop_name.toLowerCase().includes('zeeshan')));
+});
+
+test('TC-57 filtering by device category only returns shops offering that category', async () => {
+  const res = await api().get('/api/shops?device_category=Tablet');
+  assert.equal(res.status, 200, JSON.stringify(res.body));
+  assert.ok(res.body.shops.some((s) => s.shop_id === global.__searchShopId));
+});
+
+test('TC-58 combining search and device category narrows the result', async () => {
+  const res = await api().get('/api/shops?search=Zeeshan&device_category=Tablet');
+  assert.equal(res.status, 200, JSON.stringify(res.body));
+  assert.equal(res.body.shops.length, 1);
+  assert.equal(res.body.shops[0].shop_id, global.__searchShopId);
+});
+
+test('TC-59 a search with no matches returns an empty list', async () => {
+  const res = await api().get('/api/shops?search=NoSuchShopXYZ123');
+  assert.equal(res.status, 200, JSON.stringify(res.body));
+  assert.equal(res.body.shops.length, 0);
+});
+
+test('TC-60 device category filter excludes shops without that category', async () => {
+  const res = await api().get('/api/shops?device_category=Tablet');
+  assert.ok(res.body.shops.every((s) => s.shop_name !== 'Fixit Mobile Lab' || true)); // sanity: no crash
+  // Confirm a shop known NOT to offer Tablet (verified shop from TC-21, "Renamed Shop") is excluded.
+  assert.ok(!res.body.shops.some((s) => s.shop_id === shopId));
+});

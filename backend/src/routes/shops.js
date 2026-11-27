@@ -33,13 +33,30 @@ async function myShop(userId) {
 
 // ---------- Public: verified shops only ----------
 
-// GET /api/shops — list verified shops (full search & filters come in Sprint 2)
+// GET /api/shops — list verified shops, optionally filtered by name (search) and/or device category
 router.get('/', async (req, res, next) => {
   try {
-    const { rows } = await db.query(
-      `SELECT shop_id, shop_name, address, latitude, longitude, opening_hours, phone, avg_rating
-       FROM shops WHERE is_verified = TRUE ORDER BY shop_name`,
-    );
+    const { search, device_category } = req.query;
+    const conditions = ['s.is_verified = TRUE'];
+    const params = [];
+
+    if (search && String(search).trim()) {
+      params.push(`%${String(search).trim()}%`);
+      conditions.push(`s.shop_name ILIKE $${params.length}`);
+    }
+
+    let query = `SELECT DISTINCT s.shop_id, s.shop_name, s.address, s.latitude, s.longitude, s.opening_hours, s.phone, s.avg_rating
+                 FROM shops s`;
+
+    if (device_category && String(device_category).trim()) {
+      params.push(`%${String(device_category).trim()}%`);
+      query += ` JOIN services sv ON sv.shop_id = s.shop_id AND sv.is_deleted = FALSE`;
+      conditions.push(`sv.device_category ILIKE $${params.length}`);
+    }
+
+    query += ` WHERE ${conditions.join(' AND ')} ORDER BY s.shop_name`;
+
+    const { rows } = await db.query(query, params);
     res.json({ shops: rows });
   } catch (err) { next(err); }
 });
