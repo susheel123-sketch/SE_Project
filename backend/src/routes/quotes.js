@@ -52,5 +52,55 @@ router.post('/', requireRole('shop'), async (req, res, next) => {
     return next(err);
   }
 });
+// Loads a quote that belongs to the logged-in shop, with its request's status. Sends 404 and returns null if not found.
+async function loadOwnQuote(req, res) {
+  const { rows } = await db.query(
+    `SELECT q.*, r.status AS request_status
+     FROM quote_offers q
+     JOIN shops s ON s.shop_id = q.shop_id
+     JOIN requests r ON r.request_id = q.request_id
+     WHERE q.quote_id = $1 AND s.user_id = $2`,
+    [req.params.id, req.user.id],
+  );
+  if (!rows[0]) {
+    res.status(404).json({ error: 'Quote not found.' });
+    return null;
+  }
+  return rows[0];
+}
 
+// A quote can be changed only while it is pending and the owner has not accepted any quote yet.
+function canChange(q, res) {
+  if (q.status !== 'pending' || q.request_status !== 'open') {
+    res.status(409).json({ error: 'This quote can no longer be changed.' });
+    return false;
+  }
+  return true;
+}
+
+// PUT /api/quotes/:id — the shop edits its own pending quote   body: { "price": 4000, "turnaround_days": 2, "note": "..." }
+router.put('/:id(\\d+)', requireRole('shop'), async (req, res, next) => {
+  try {
+    const q = await loadOwnQuote(req, res);
+    if (!q || !canChange(q, res)) return;
+    if (respondIfErrors(res, validateQuote(req.body))) return;
+    const days = req.body.turnaround_days === undefined || req.body.turnaround_days === '' ? null : Number(req.body.turnaround_days);
+    const { rows } = await db.query(
+      'UPDATE quote_offers SET price = $2, turnaround_days = $3, note = $4 WHERE quote_id = $1 RETURNING *',
+      [q.quote_id, Number(req.body.price), days, req.body.note?.trim() || null],
+    );
+    return res.json({ quote: rows[0] });
+  } catch (err) { return next(err); }
+});
+
+// PATCH /api/quotes/:id/withdraw — the shop withdraws its own pending quote
+router.patch('/:id(\\d+)/withdraw', requireRole('shop'), async (req, res, next) => {
+  try {
+    const q = await loadOwnQuote(req, res);
+    if (!q || !canChange(q, res)) return;
+    const { rows } = await db.query(
+      "UPDATE quote_offers SET status = 'withdrawn' WHERE quote_id = $1 RETURNING *", [q.quote_id]);
+    return res.json({ quote: rows[0] });
+  } catch (err) { return next(err); }
+});
 module.exports = router;
