@@ -103,4 +103,29 @@ router.patch('/:id(\\d+)/withdraw', requireRole('shop'), async (req, res, next) 
     return res.json({ quote: rows[0] });
   } catch (err) { return next(err); }
 });
+// GET /api/quotes?request_id=5 — the request's owner sees every quote that is not withdrawn (cheapest first);
+// a shop sees only its own quote on that request.
+router.get('/', requireRole('owner', 'shop'), async (req, res, next) => {
+  try {
+    const requestId = Number(req.query.request_id) || 0;
+    if (req.user.role === 'owner') {
+      const own = await db.query('SELECT 1 FROM requests WHERE request_id = $1 AND owner_id = $2', [requestId, req.user.id]);
+      if (!own.rows[0]) return res.status(404).json({ error: 'Request not found.' });
+      const { rows } = await db.query(
+        `SELECT q.*, s.shop_name, s.address
+         FROM quote_offers q JOIN shops s ON s.shop_id = q.shop_id
+         WHERE q.request_id = $1 AND q.status <> 'withdrawn'
+         ORDER BY q.price ASC, q.created_at ASC`,
+        [requestId],
+      );
+      return res.json({ quotes: rows });
+    }
+    const { rows } = await db.query(
+      `SELECT q.* FROM quote_offers q JOIN shops s ON s.shop_id = q.shop_id
+       WHERE q.request_id = $1 AND s.user_id = $2`,
+      [requestId, req.user.id],
+    );
+    return res.json({ quotes: rows });
+  } catch (err) { return next(err); }
+});
 module.exports = router;
